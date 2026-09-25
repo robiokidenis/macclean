@@ -18,6 +18,13 @@ macOS only (uses `~/.Trash`, Finder reveal, Darwin stat structures).
 MIT licensed. Nothing is ever deleted automatically — you inspect, you
 decide.
 
+> [!WARNING]
+> **USE AT YOUR OWN RISK — this tool can permanently delete your data.**
+> Cleanups like emptying the Trash, destructive items, or `--hard` removals
+> are **irreversible**. Always review the listed paths and sizes before
+> confirming a deletion. The authors accept no liability for data loss.
+> See the [safety model](#safety-model) for which actions are recoverable.
+
 ## Screenshots
 
 | | |
@@ -173,6 +180,11 @@ After overlap                   228.3 GB
 ```
 
 ## Safety model
+
+> [!IMPORTANT]
+> **Use at your own risk.** Despite every safeguard (Trash-first for user
+> files, confirmations, protected paths), actions marked **destructive**
+> delete data permanently. Back up before large cleanups.
 
 | Class | Examples | Action |
 |-------|----------|--------|

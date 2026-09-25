@@ -163,7 +163,8 @@ func (m *model) viewMenu() string {
 	}
 	quote := dimStyle.Render("\n  “Don't tell me my Mac is dirty.")
 	quote2 := dimStyle.Render("Show me exactly what is using my disk.”")
-	return strings.Join(rows, "\n") + "\n" + quote + "\n" + quote2 + "\n"
+	warn := warnStyle.Render("\n  ⚠  Use at your own risk — cleanups can permanently delete data.")
+	return strings.Join(rows, "\n") + "\n" + quote + "\n" + quote2 + "\n" + warn + "\n"
 }
 
 // ---- roots ----

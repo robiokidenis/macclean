@@ -80,6 +80,10 @@ func main() {
 func usage() {
 	fmt.Print(`macclean — see exactly what is using your disk
 
+⚠  USE AT YOUR OWN RISK — this tool can PERMANENTLY DELETE your data.
+   Trash-emptying, destructive items and --hard removals are irreversible.
+   Always review the paths shown before confirming. See "macclean help".
+
 Usage:
   macclean                       interactive UI
   macclean analyze [paths]       largest folders and files (defaults to common user dirs)
