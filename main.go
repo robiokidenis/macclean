@@ -81,10 +81,8 @@ func usage() {
 	fmt.Print(`macclean — see exactly what is using your disk
 
 ⚠  USE AT YOUR OWN RISK — this tool can PERMANENTLY DELETE your data.
-   PERHATIAN: gunakan dengan risiko Anda sendiri — alat ini dapat
-   menghapus data Anda secara PERMANEN.
-   Trash-emptying, destructive items and --hard removals are irreversible.
-   Always review the paths shown before confirming. See "macclean help".
+   Emptying the Trash, destructive items and --hard removals are
+   irreversible. Always review the paths shown before confirming.
 
 Usage:
   macclean                       interactive UI
