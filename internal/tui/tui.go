@@ -1089,7 +1089,7 @@ func (m *model) keyFileList(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.flCursor < len(m.flFiles) {
 				m.fileInfoModal(m.flFiles[m.flCursor])
 			}
-		case "d", "t":
+		case "d", "t", "D", "T":
 			var targets []fsutil.FileInfo
 			for _, f := range m.flFiles {
 				if m.flChecked[f.Path] {
@@ -1202,7 +1202,7 @@ func (m *model) keyDuplicates(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if row, ok := m.currentDupRow(); ok && !row.header {
 				m.fileInfoModal(m.dup.Groups[row.groupIdx].Files[row.fileIdx])
 			}
-		case "d", "t":
+		case "d", "t", "D", "T":
 			var paths []string
 			var total int64
 			for _, g := range m.dup.Groups {
@@ -1288,6 +1288,9 @@ func (m *model) keyDeps(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.setStatus("sorted by size (largest first)")
 			}
+		case "c": // clear selection
+			m.depsChecked = map[string]bool{}
+			m.setStatus("selection cleared")
 		case "o":
 			if e.Path != "" {
 				fsutil.Open(e.Path)
@@ -1300,7 +1303,7 @@ func (m *model) keyDeps(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if e.Path != "" {
 				m.depInfoModal(e)
 			}
-		case "d", "t":
+		case "d", "t", "D", "T":
 			var targets []devdeps.Entry
 			for _, en := range entries {
 				if m.depsChecked[en.Path] {
@@ -1316,22 +1319,29 @@ func (m *model) keyDeps(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			var total int64
 			var paths []string
 			hints := map[string]string{}
+			inUse := 0
 			for _, t := range targets {
 				total += t.Size
 				paths = append(paths, t.Path)
 				hints[t.Reinstall] = t.Reinstall
+				if !t.Stale {
+					inUse++
+				}
 			}
 			var hintList []string
 			for h := range hints {
 				hintList = append(hintList, h)
 			}
 			sort.Strings(hintList)
-			m.openConfirm("Move dependency folders to Trash",
-				[]string{
-					fmt.Sprintf("%d folder(s) · %s", len(targets), units.Format(total)),
-					"Reinstall afterwards: " + strings.Join(hintList, " / "),
-					"Recoverable from the Trash.",
-				},
+			lines := []string{
+				fmt.Sprintf("%d folder(s) · %s", len(targets), units.Format(total)),
+				"Reinstall afterwards: " + strings.Join(hintList, " / "),
+				"Recoverable from the Trash.",
+			}
+			if inUse > 0 {
+				lines = append(lines, warnStyle.Render(fmt.Sprintf("Note: %d of these are still IN USE (recently touched) — make sure those projects are closed.", inUse)))
+			}
+			m.openConfirm("Move dependency folders to Trash", lines,
 				func(m *model) { m.trashPaths(paths) })
 		}
 	}

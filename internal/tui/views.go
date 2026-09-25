@@ -304,6 +304,7 @@ func (m *model) viewFileList() string {
 			}
 		}
 		b.WriteString("\n" + checkedStyle.Render(fmt.Sprintf("  %d selected · %s", checked, units.Format(sum))) + "\n")
+		b.WriteString(warnStyle.Render(fmt.Sprintf("  ► press d to move %d file(s) (%s) to Trash", checked, units.Format(sum))) + "\n")
 	}
 	return b.String()
 }
@@ -402,6 +403,7 @@ func (m *model) viewDuplicates() string {
 	}
 	if checkedCount > 0 {
 		b.WriteString("\n" + checkedStyle.Render(fmt.Sprintf("  %d marked · %s reclaimable", checkedCount, units.Format(checkedBytes))) + "\n")
+		b.WriteString(warnStyle.Render(fmt.Sprintf("  ► press d to trash %d marked copy/copies · c to clear", checkedCount)) + "\n")
 	}
 	return b.String()
 }
@@ -448,6 +450,8 @@ func (m *model) viewDeps() string {
 		sortName(m.depsByAge))) + "\n")
 	if checkedN > 0 {
 		b.WriteString(checkedStyle.Render(fmt.Sprintf("  %d selected · %s", checkedN, units.Format(checkedBytes))) + "\n")
+		b.WriteString(warnStyle.Render(fmt.Sprintf("  ► press d to move %d item(s) (%s) to Trash · c to clear selection",
+			checkedN, units.Format(checkedBytes))) + "\n")
 	}
 	return b.String()
 }
