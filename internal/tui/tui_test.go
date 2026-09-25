@@ -73,6 +73,14 @@ func TestSettingsCycleAndQuit(t *testing.T) {
 	}
 	m.Update(arrowDown()) // to old-days row
 	m.Update(arrowDown()) // to dup-min row
+	m.Update(arrowDown()) // to duplicates-in-dev-folders row
+	if m.s.DupIncludeDev {
+		t.Fatal("default should exclude dev folders from duplicate scans")
+	}
+	m.Update(spaceKey())
+	if !m.s.DupIncludeDev {
+		t.Fatal("space should toggle the dev-folders setting")
+	}
 	m.Update(arrowDown()) // to dep-staleness row
 	before := m.s.DepStaleDays
 	m.Update(spaceKey())

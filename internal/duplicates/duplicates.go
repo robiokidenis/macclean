@@ -228,6 +228,15 @@ type digestFn func(ctx context.Context, path string, size int64, onBytes func(in
 // partialHashLen is the head and tail sample size.
 const partialHashLen = 64 * 1024
 
+// DevFolderNames are dependency folders excluded from duplicate scans by
+// default. Files inside them repeat across projects by design (every
+// project ships its own copy of each package), so they are "structural"
+// duplicates: deleting one copy breaks that project until reinstall. The
+// right cleanup unit for these folders is the folder itself — see the
+// Stale Deps screen — not individual files. Scans that explicitly opt in
+// (--include-dev) can still inspect them.
+var DevFolderNames = []string{"node_modules", "vendor", "Pods"}
+
 func partialDigest(ctx context.Context, path string, size int64, onBytes func(int64)) string {
 	f, err := os.Open(path)
 	if err != nil {

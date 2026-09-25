@@ -67,7 +67,9 @@ macclean                    # interactive UI — the best way in
 macclean analyze            # which user folders are largest?
 macclean analyze ~/Projects # drill into one tree
 macclean downloads          # what's rotting in ~/Downloads?
-macclean duplicates         # byte-identical files
+macclean duplicates         # byte-identical files (dev folders excluded)
+macclean duplicates ~/Projects   # scan one specific folder
+macclean duplicates --include-dev   # also scan node_modules/vendor/Pods
 macclean deps               # node_modules/vendor/nvm by last use
 macclean macos              # Trash, logs, app caches
 macclean dashboard          # everything, deduplicated
@@ -107,7 +109,7 @@ macclean analyze [paths]           # largest folders + files (defaults to user d
 macclean large [--min-size 1GB]    # files above a threshold
 macclean downloads                 # ~/Downloads categorized
 macclean old [--days 180]          # not modified for N days (mtime, not atime)
-macclean duplicates [--min-size 10MB] [paths]
+macclean duplicates [--min-size 10MB] [--include-dev] [paths]
 macclean deps [--days 90] [paths]  # node_modules, vendor, Pods, nvm versions…
 macclean deps --clean <substring>  # trash matching stale entries (asks first)
 macclean deps --clean <x> --hard   # delete instead of Trash
@@ -149,6 +151,20 @@ filesystem boundaries are not crossed by default; exclusions
 4. Full streaming SHA-256, only for groups that survive stage 3.
 
 Most of the disk is never read.
+
+Dependency folders (`node_modules`, `vendor`, `Pods`) are **excluded by
+default**: their contents repeat across projects *by design* — every
+project ships its own copy of each package — so they are structural
+duplicates, and deleting one copy breaks that project until reinstall.
+The right cleanup unit for them is the whole folder (see *Stale deps*
+below), or switch to a package manager with a content-addressable store
+(pnpm, bun) which eliminates the duplication at the source. Use
+`--include-dev` (CLI) or the `d` toggle on the Duplicates setup screen
+(TUI) when you really want to inspect them; the results screen then warns
+that they are structural.
+
+In the TUI, `Duplicates` opens a small setup screen first: `enter` scans
+the default roots, `p` scans any folder you type, `d` toggles dev folders.
 
 ### Stale project dependencies & toolchains
 `node_modules`, `vendor` (Laravel/Composer), `Pods`, `target`, `build`,

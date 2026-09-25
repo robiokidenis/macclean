@@ -58,6 +58,8 @@ func (m *model) View() string {
 		body = m.viewDownloads()
 	case scrDuplicates:
 		body = m.viewDuplicates()
+	case scrDupSetup:
+		body = m.viewDupSetup()
 	case scrDeps:
 		body = m.viewDeps()
 	case scrDashboard:
@@ -129,6 +131,8 @@ func (m *model) keyHints() string {
 		return "enter open category · esc back"
 	case scrDuplicates:
 		return "space mark · s suggest · c clear · d trash marked · o open · f finder · esc/⌫ back"
+	case scrDupSetup:
+		return "enter start · p custom folder · d toggle dev folders · esc back"
 	case scrDeps:
 		return "space select · d trash · i info (reinstall cmd) · / sort age|size · o open · f finder · esc/⌫ back"
 	case scrDashboard:
@@ -350,6 +354,35 @@ func (m *model) viewDownloads() string {
 	return b.String()
 }
 
+// ---- duplicates setup ----
+
+func (m *model) viewDupSetup() string {
+	roots := m.s.DupRoots
+	shown := roots
+	if len(m.dupRootsOverride) > 0 {
+		shown = m.dupRootsOverride
+	}
+	var display []string
+	for _, r := range shown {
+		display = append(display, fsutil.DisplayPath(r))
+	}
+	devLine := goodStyle.Render("excluded") + dimStyle.Render("  (d to toggle — Stale Deps is the right cleanup for those)")
+	if m.s.DupIncludeDev {
+		devLine = warnStyle.Render("included") + dimStyle.Render("  (d to toggle — structural duplicates, deleting one copy breaks that project)")
+	}
+	var b strings.Builder
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("  scan roots   %s\n", strings.Join(display, ", ")))
+	b.WriteString(fmt.Sprintf("  dev folders  %s\n", devLine))
+	b.WriteString("\n")
+	b.WriteString("  " + cursorStyle.Render("enter — start scan") + "\n")
+	b.WriteString("  p — scan a custom folder…\n")
+	if m.dupSetupInput != nil {
+		b.WriteString("\n" + m.dupSetupInput.view(m.width) + "\n")
+	}
+	return b.String()
+}
+
 // ---- duplicates ----
 
 func (m *model) viewDuplicates() string {
@@ -357,8 +390,12 @@ func (m *model) viewDuplicates() string {
 		return "no data"
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("\n  %d groups · %s reclaimable\n",
-		len(m.dup.Groups), units.Format(m.dup.Reclaimable)))
+	devNote := ""
+	if m.dupDevIncluded {
+		devNote = warnStyle.Render(" · dev folders included (structural duplicates)")
+	}
+	b.WriteString(fmt.Sprintf("\n  %d groups · %s reclaimable%s\n",
+		len(m.dup.Groups), units.Format(m.dup.Reclaimable), devNote))
 	if len(m.dup.Groups) == 0 {
 		b.WriteString("\n" + goodStyle.Render("  No duplicates found.") + "\n")
 		return b.String()
@@ -463,6 +500,13 @@ func sortName(byAge bool) string {
 	return "size"
 }
 
+func boolWord(b bool) string {
+	if b {
+		return "included"
+	}
+	return "excluded"
+}
+
 // ---- dashboard ----
 
 func (m *model) viewDashboard() string {
@@ -545,6 +589,7 @@ func (m *model) viewSettings() string {
 		{"Large-file threshold", units.Format(s.LargeMinBytes)},
 		{"Old-file age", fmt.Sprintf("%d days", s.OldDays)},
 		{"Duplicate minimum size", units.Format(s.DupMinBytes)},
+		{"Duplicates in dev folders", boolWord(s.DupIncludeDev)},
 		{"Dep staleness", fmt.Sprintf("%d days", s.DepStaleDays)},
 		{"Exclusions", strings.Join(s.Exclusions, ", ")},
 		{"Save", settings.Path()},

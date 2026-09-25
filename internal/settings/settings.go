@@ -26,6 +26,11 @@ type Settings struct {
 	DupMinBytes int64 `json:"dupMinBytes"`
 	// DupRoots are the directories searched for duplicates by default.
 	DupRoots []string `json:"dupRoots"`
+	// DupIncludeDev scans inside node_modules/vendor/Pods for duplicates.
+	// Off by default: those duplicates are structural, and the safe
+	// cleanup unit is the whole dependency folder (Stale Deps), not
+	// individual files.
+	DupIncludeDev bool `json:"dupIncludeDev"`
 	// DepStaleDays: project dependency folders untouched for longer than
 	// this are suggested for cleanup (default 90).
 	DepStaleDays int `json:"depStaleDays"`
@@ -103,6 +108,7 @@ func Load() Settings {
 	if onDisk.DupRoots != nil {
 		s.DupRoots = onDisk.DupRoots
 	}
+	s.DupIncludeDev = onDisk.DupIncludeDev
 	if onDisk.DepStaleDays > 0 {
 		s.DepStaleDays = onDisk.DepStaleDays
 	}

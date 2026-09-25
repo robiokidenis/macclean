@@ -35,6 +35,7 @@ const (
 	scrFileList
 	scrDownloads
 	scrDuplicates
+	scrDupSetup
 	scrDeps
 	scrDashboard
 	scrCleanup
@@ -142,6 +143,11 @@ type model struct {
 	dupRows    []dupRow
 	dupCursor  int
 	dupChecked map[string]bool
+
+	// duplicates setup (choose where to scan)
+	dupSetupInput    *lineInput
+	dupRootsOverride []string  // custom scan root chosen in setup; nil = settings roots
+	dupDevIncluded   bool      // whether the running/last scan included dev folders
 
 	// stale project deps
 	deps        *devdeps.Report
@@ -266,6 +272,8 @@ func (m *model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.keyDownloads(k)
 	case scrDuplicates:
 		return m.keyDuplicates(k)
+	case scrDupSetup:
+		return m.keyDupSetup(k)
 	case scrDeps:
 		return m.keyDeps(k)
 	case scrDashboard:
@@ -400,7 +408,8 @@ func (m *model) keyMenu(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "Downloads":
 			m.startJob(jobDownloads, "Scanning ~/Downloads")
 		case "Duplicates":
-			m.startJob(jobDuplicates, "Finding duplicates")
+			m.dupSetupInput = nil
+			m.screen = scrDupSetup
 		case "Large Files":
 			m.flTitle = "Large files"
 			m.startJob(jobUserFiles, "Scanning user folders")
@@ -565,6 +574,17 @@ func (m *model) startJob(kind jobKind, label string) {
 
 	case jobDuplicates:
 		roots := s.DupRoots
+		if len(m.dupRootsOverride) > 0 {
+			roots = m.dupRootsOverride
+		}
+		// Dev folders (node_modules, vendor, Pods) are excluded unless the
+		// user opted in: their duplicates are structural, and Stale Deps is
+		// the right cleanup unit for them.
+		excludes := append([]string{}, s.Exclusions...)
+		m.dupDevIncluded = s.DupIncludeDev
+		if !s.DupIncludeDev {
+			excludes = append(excludes, duplicates.DevFolderNames...)
+		}
 		go func() {
 			var files []fsutil.FileInfo
 			for i, root := range roots {
@@ -574,7 +594,7 @@ func (m *model) startJob(kind jobKind, label string) {
 				base := float64(i) / float64(len(roots))
 				res, _ := scanner.Scan(ctx, root, scanner.Options{
 					Concurrency:  s.Concurrency,
-					ExcludeNames: s.Exclusions,
+					ExcludeNames: excludes,
 					MinFileBytes: s.DupMinBytes,
 					Progress: func(p scanner.Progress) {
 						if p.Done {
@@ -1147,6 +1167,62 @@ func (m *model) keyDownloads(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// ---- duplicates setup ----
+
+// keyDupSetup chooses where to scan: default roots, a custom path, or
+// toggling whether dev folders (node_modules, vendor, Pods) are inspected.
+func (m *model) keyDupSetup(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.dupSetupInput != nil {
+		switch k.Type {
+		case tea.KeyEsc:
+			m.dupSetupInput = nil
+		case tea.KeyEnter:
+			raw := strings.TrimSpace(m.dupSetupInput.value())
+			m.dupSetupInput = nil
+			if raw == "" {
+				return m, nil
+			}
+			p := fsutil.ExpandPath(raw)
+			if err := scanner.CheckScannable(p); err != nil {
+				m.openError(err)
+				return m, nil
+			}
+			if st, err := fsutil.Lstat(p); err != nil || !st.IsDir() {
+				m.openError(fmt.Errorf("%s is not a readable directory", p))
+				return m, nil
+			}
+			m.dupRootsOverride = []string{p}
+			m.startJob(jobDuplicates, "Finding duplicates in "+fsutil.DisplayPath(p))
+		default:
+			m.dupSetupInput.update(k)
+		}
+		return m, nil
+	}
+	switch {
+	case k.Type == tea.KeyEsc:
+		m.screen = scrMenu
+	case k.Type == tea.KeyEnter:
+		m.dupRootsOverride = nil
+		m.startJob(jobDuplicates, "Finding duplicates")
+	case k.Type == tea.KeyRunes:
+		switch string(k.Runes) {
+		case "p":
+			m.dupSetupInput = newLineInput("path:")
+		case "d":
+			m.s.DupIncludeDev = !m.s.DupIncludeDev
+			if err := settings.Save(m.s); err != nil {
+				m.openError(err)
+			}
+			if m.s.DupIncludeDev {
+				m.setStatus("dev folders will be scanned (node_modules, vendor, Pods)")
+			} else {
+				m.setStatus("dev folders excluded — use Stale Deps for those")
+			}
+		}
+	}
+	return m, nil
+}
+
 // ---- duplicates ----
 
 type dupRow struct {
@@ -1571,7 +1647,7 @@ func (m *model) keySettings(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	rows := 6
+	rows := 7
 	switch {
 	case k.Type == tea.KeyUp || string(k.Runes) == "k":
 		if m.stCursor > 0 {
@@ -1591,7 +1667,9 @@ func (m *model) keySettings(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.s.OldDays = cycleInt(m.s.OldDays, []int{30, 90, 180, 365})
 		case 2: // dup min
 			m.s.DupMinBytes = cycle(m.s.DupMinBytes, []int64{1 << 20, 10 << 20, 50 << 20, 100 << 20})
-		case 3: // dep stale days
+		case 3: // duplicates inside dev folders
+			m.s.DupIncludeDev = !m.s.DupIncludeDev
+		case 4: // dep stale days
 			m.s.DepStaleDays = cycleInt(m.s.DepStaleDays, []int{30, 90, 180, 365})
 		}
 	case k.Type == tea.KeyRunes:
@@ -1650,6 +1728,8 @@ func (m *model) screenTitle() string {
 		return "Downloads"
 	case scrDuplicates:
 		return "Duplicate files"
+	case scrDupSetup:
+		return "Duplicates — scan where?"
 	case scrDeps:
 		return "Project dependencies"
 	case scrDashboard:

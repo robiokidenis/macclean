@@ -212,10 +212,14 @@ func trunc(s string, n int) string {
 
 // scanPaths scans each root, printing live progress on a TTY, and returns
 // the combined retained file list plus per-root results.
-func (r *runContext) scanPaths(paths []string, minFileBytes int64) ([]fsutil.FileInfo, []*scanner.Result) {
+func (r *runContext) scanPaths(paths []string, minFileBytes int64, extraExcludes ...[]string) ([]fsutil.FileInfo, []*scanner.Result) {
 	var files []fsutil.FileInfo
 	var results []*scanner.Result
-	excludes := mergeExcludes(r.s.Exclusions, r.c.excludes)
+	extra := []string{}
+	for _, e := range extraExcludes {
+		extra = append(extra, e...)
+	}
+	excludes := mergeExcludes(r.s.Exclusions, append(append([]string{}, r.c.excludes...), extra...))
 	for _, p := range paths {
 		root := fsutil.ExpandPath(p)
 		cacheKey := fmt.Sprintf("scan-%s-min%d-ex%v-con%d", root, minFileBytes, excludes, r.c.concurrency)
@@ -520,8 +524,10 @@ func cmdDownloads(args []string) {
 
 func cmdDuplicates(args []string) {
 	var minSize string
+	var includeDev bool
 	r := newRun("duplicates", args, func(fs *flag.FlagSet) {
 		fs.StringVar(&minSize, "min-size", "", "minimum size (e.g. 10MB)")
+		fs.BoolVar(&includeDev, "include-dev", false, "scan inside node_modules/vendor/Pods (structural duplicates)")
 	})
 	defer r.finish()
 	min := r.s.DupMinBytes
@@ -532,21 +538,32 @@ func cmdDuplicates(args []string) {
 	if len(paths) == 0 {
 		paths = r.s.DupRoots
 	}
-	files, _ := r.scanPaths(paths, min)
+	devIn := includeDev || r.s.DupIncludeDev
+	var excludes []string
+	if !devIn {
+		excludes = append(excludes, duplicates.DevFolderNames...)
+	}
+	excludes = append(excludes, r.c.excludes...)
+	files, _ := r.scanPaths(paths, min, excludes)
 	dup := r.findDuplicates(files, min)
 	if r.c.json {
 		report.EmitJSON(map[string]any{
 			"roots": paths, "minSize": min, "scanned": dup.Scanned,
+			"devIncluded": devIn,
 			"reclaimable": dup.Reclaimable, "groups": jsonDupGroups(dup.Groups),
 		})
 		return
 	}
 	o := &report.Out{}
+	if !devIn {
+		o.Raw(dimNote("dev folders (node_modules, vendor, Pods) excluded — use --include-dev to scan inside them"))
+	}
 	report.DuplicatesReport(o, dup)
 	fmt.Println(o.String())
 }
 
-func (r *runContext) findDuplicates(files []fsutil.FileInfo, min int64) *duplicates.Result {	tty := isTTY()
+func (r *runContext) findDuplicates(files []fsutil.FileInfo, min int64) *duplicates.Result {
+	tty := isTTY()
 	if tty {
 		fmt.Fprintln(os.Stderr, "Finding duplicates…")
 	}
@@ -998,3 +1015,6 @@ func runTUI() {
 		os.Exit(1)
 	}
 }
+
+// dimNote renders a secondary explanation line for report headers.
+func dimNote(s string) string { return s }
