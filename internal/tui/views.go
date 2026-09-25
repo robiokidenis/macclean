@@ -205,8 +205,8 @@ func (m *model) viewScan() string {
 		"",
 		dimStyle.Render(p.detail),
 		"",
-		helpStyle.Render("esc — cancel"),
 	}
+	// The footer already shows the key hints (esc cancel); no duplicate here.
 	return strings.Join(lines, "\n") + "\n"
 }
 

@@ -614,9 +614,9 @@ func cmdDeps(args []string) {
 		StaleDays: days,
 		SizeAll:   true,
 		MinSize:   minBytes,
-		Progress: func(label string) {
+		Progress: func(p devdeps.Progress) {
 			if isTTY() {
-				fmt.Fprintf(os.Stderr, "\r%-70s   ", trunc(label, 70))
+				fmt.Fprintf(os.Stderr, "\r%-70s   ", trunc(p.Label, 70))
 			}
 		},
 	})

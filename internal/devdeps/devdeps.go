@@ -145,8 +145,15 @@ type Options struct {
 	MinSize int64
 	// MaxDepth caps how deep the search descends (default 12).
 	MaxDepth int
-	// Progress receives one line per phase for UI feedback.
-	Progress func(label string)
+	// Progress receives phase updates for UI feedback.
+	Progress func(Progress)
+}
+
+// Progress is one phase update: Done of Total measurable steps finished.
+type Progress struct {
+	Label string
+	Done  int
+	Total int
 }
 
 // DefaultRoots returns sensible project search roots for this machine.
@@ -193,7 +200,7 @@ func Find(ctx context.Context, roots []string, opts Options) *Report {
 			break
 		}
 		if opts.Progress != nil {
-			opts.Progress("Checking " + tc.Name + " versions")
+			opts.Progress(Progress{Label: "Checking " + tc.Name + " versions"})
 		}
 		rep.Entries = append(rep.Entries, toolchainEntries(tc, pins[tc.Name], cutoff)...)
 	}
@@ -216,7 +223,10 @@ func Find(ctx context.Context, roots []string, opts Options) *Report {
 		}
 		i++
 		if opts.Progress != nil {
-			opts.Progress(fmt.Sprintf("Measuring %s (%d/%d)", fsutil.DisplayPath(rep.Entries[idx].Path), i, len(toSize)))
+			opts.Progress(Progress{
+				Label: "Measuring " + fsutil.DisplayPath(rep.Entries[idx].Path),
+				Done:  i, Total: len(toSize),
+			})
 		}
 		res, err := scanner.Scan(ctx, rep.Entries[idx].Path, scanner.Options{Concurrency: 4, MinFileBytes: 1 << 62})
 		if err == nil && !res.Cancelled {

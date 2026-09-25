@@ -654,15 +654,16 @@ func (m *model) startJob(kind jobKind, label string) {
 			depRoots = devdeps.DefaultRoots()
 		}
 		go func() {
-			n := 0
 			rep := devdeps.Find(ctx, depRoots, devdeps.Options{
 				StaleDays: s.DepStaleDays,
 				SizeAll:   true,
-				Progress: func(label string) {
-					n++
-					frac := 0.3 + 0.6*float64(n%20)/20.0
-					send(progressMsg{label: label, frac: frac,
-						detail: "node_modules, vendor, Pods, nvm versions…"})
+				Progress: func(p devdeps.Progress) {
+					frac := 0.05
+					if p.Total > 0 {
+						frac = 0.1 + 0.9*float64(p.Done)/float64(p.Total)
+					}
+					send(progressMsg{label: p.Label, frac: frac,
+						detail: fmt.Sprintf("%d/%d measured · node_modules, vendor, nvm versions…", p.Done, p.Total)})
 				},
 			})
 			send(jobDoneMsg{kind: jobDeps, deps: rep, cancelled: ctx.Err() != nil})

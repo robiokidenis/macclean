@@ -221,3 +221,33 @@ func TestSizeOnlyStale(t *testing.T) {
 		}
 	}
 }
+
+// Progress must report real Done/Total so UI bars can be honest.
+func TestProgressCountsAreReal(t *testing.T) {
+	root := fixture(t)
+	var last Progress
+	var nonMonotonic bool
+	prev := -1
+	rep := Find(context.Background(), []string{root}, Options{
+		StaleDays: 90, SizeAll: true,
+		Progress: func(p Progress) {
+			if p.Total > 0 {
+				if p.Done < prev {
+					nonMonotonic = true
+				}
+				prev = p.Done
+				last = p
+			}
+		},
+	})
+	if nonMonotonic {
+		t.Fatal("progress Done must never go backwards")
+	}
+	_ = rep
+	if last.Total == 0 {
+		t.Fatal("no measurable progress reported")
+	}
+	if last.Done != last.Total {
+		t.Fatalf("final progress = %d/%d, want %d/%d", last.Done, last.Total, last.Total, last.Total)
+	}
+}
