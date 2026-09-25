@@ -20,10 +20,13 @@ decide.
 
 > [!WARNING]
 > **USE AT YOUR OWN RISK — this tool can permanently delete your data.**
+> **PERHATIAN: gunakan dengan risiko Anda sendiri — alat ini dapat
+> menghapus data Anda secara PERMANEN.**
 > Cleanups like emptying the Trash, destructive items, or `--hard` removals
-> are **irreversible**. Always review the listed paths and sizes before
-> confirming a deletion. The authors accept no liability for data loss.
-> See the [safety model](#safety-model) for which actions are recoverable.
+> are **irreversible** (tidak dapat dibatalkan). Always review the paths
+> and sizes shown before confirming. The authors accept no liability for
+> data loss. See the [safety model](#safety-model) for which actions are
+> recoverable.
 
 ## Screenshots
 

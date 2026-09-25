@@ -14,4 +14,7 @@ func TestMenuShowsRiskWarning(t *testing.T) {
 	if !strings.Contains(view, "own risk") || !strings.Contains(view, "permanently delete data") {
 		t.Fatalf("menu must show the at-your-own-risk warning:\n%s", view)
 	}
+	if !strings.Contains(view, "risiko sendiri") || !strings.Contains(view, "permanen") {
+		t.Fatalf("menu must show the Indonesian warning:\n%s", view)
+	}
 }
