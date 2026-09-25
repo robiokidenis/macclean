@@ -35,6 +35,8 @@ var (
 
 	modalTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("231"))
 	modalBodyStyle  = lipgloss.NewStyle()
+	dbFlagStyle     = warnStyle.Bold(true)
+	deletedStyle    = lipgloss.NewStyle().Faint(true).Strikethrough(true)
 )
 
 // View renders the current screen.
@@ -292,8 +294,14 @@ func (m *model) viewFileList() string {
 		} else {
 			mark = dimStyle.Render("[ ]")
 		}
-		line := fmt.Sprintf("%9s  %s  %s", units.Format(f.Size), units.Age(time.Unix(f.ModTime, 0)), truncate(fsutil.DisplayPath(f.Path), m.width-34))
-		if i == m.flCursor {
+		flag := ""
+		if fsutil.IsDatabaseFile(f.Path) {
+			flag = "  " + dbFlagStyle.Render("⚠db")
+		}
+		line := fmt.Sprintf("%9s  %s  %s%s", units.Format(f.Size), units.Age(time.Unix(f.ModTime, 0)), truncate(fsutil.DisplayPath(f.Path), m.width-34), flag)
+		if !fileExists(f.Path) {
+			line = deletedStyle.Render(line) + dimStyle.Render("  · deleted")
+		} else if i == m.flCursor {
 			line = cursorStyle.Render(line)
 		} else {
 			line = style.Render(line)
@@ -430,13 +438,17 @@ func (m *model) viewDuplicates() string {
 		if row.fileIdx == g.KeepIndex() {
 			keep = goodStyle.Render("(oldest)")
 		}
-		line := fmt.Sprintf("%9s  %s %s", units.Format(f.Size), truncate(fsutil.DisplayPath(f.Path), maxInt(10, m.width-42)), keep)
-		if i == m.dupCursor {
-			line = cursorStyle.Render(strings.TrimLeft(line, " "))
-			b.WriteString("  " + mark + " " + line + "\n")
-		} else {
-			b.WriteString("  " + mark + " " + line + "\n")
+		flag := ""
+		if fsutil.IsDatabaseFile(f.Path) {
+			flag = " " + dbFlagStyle.Render("⚠db")
 		}
+		line := fmt.Sprintf("%9s  %s %s%s", units.Format(f.Size), truncate(fsutil.DisplayPath(f.Path), maxInt(10, m.width-42)), keep, flag)
+		if !fileExists(f.Path) {
+			line = deletedStyle.Render(line) + dimStyle.Render("  · deleted")
+		} else if i == m.dupCursor {
+			line = cursorStyle.Render(strings.TrimLeft(line, " "))
+		}
+		b.WriteString("  " + mark + " " + line + "\n")
 	}
 	if checkedCount > 0 {
 		b.WriteString("\n" + checkedStyle.Render(fmt.Sprintf("  %d marked · %s reclaimable", checkedCount, units.Format(checkedBytes))) + "\n")
@@ -468,9 +480,15 @@ func (m *model) viewDeps() string {
 		if e.Stale {
 			status = warnStyle.Render("STALE  ")
 		}
-		line := fmt.Sprintf("%9s  %s  %-13s  %s", units.Format(e.Size), status, e.Age(),
-			truncate(fsutil.DisplayPath(e.Path), maxInt(10, m.width-52)))
-		if i == m.depsCursor {
+		flag := ""
+		if fsutil.IsDatabaseFile(e.Path) {
+			flag = " " + dbFlagStyle.Render("⚠db")
+		}
+		line := fmt.Sprintf("%9s  %s  %-13s  %s%s", units.Format(e.Size), status, e.Age(),
+			truncate(fsutil.DisplayPath(e.Path), maxInt(10, m.width-52)), flag)
+		if !fileExists(e.Path) {
+			line = deletedStyle.Render(line) + dimStyle.Render("  · deleted")
+		} else if i == m.depsCursor {
 			line = cursorStyle.Render(strings.TrimLeft(line, " "))
 		}
 		b.WriteString("  " + mark + " " + line + "\n")

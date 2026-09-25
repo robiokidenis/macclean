@@ -111,7 +111,15 @@ func FileListReport(o *Out, title string, files []fsutil.FileInfo, total int64) 
 	o.Raw(title)
 	o.Raw("")
 	for _, f := range files {
-		o.Line("  %8s  %s  %s", units.Format(f.Size), units.Age(time.Unix(f.ModTime, 0)), fsutil.DisplayPath(f.Path))
+		flag := ""
+		if fsutil.IsDatabaseFile(f.Path) {
+			flag = "  ⚠ database"
+		}
+		if _, err := os.Lstat(f.Path); err != nil {
+			o.Line("  %8s  %s  %s  · deleted", units.Format(f.Size), units.Age(time.Unix(f.ModTime, 0)), fsutil.DisplayPath(f.Path))
+			continue
+		}
+		o.Line("  %8s  %s  %s%s", units.Format(f.Size), units.Age(time.Unix(f.ModTime, 0)), fsutil.DisplayPath(f.Path), flag)
 	}
 	o.Raw("")
 	o.Line("Total: %s (%s files)", units.Format(total), humanInt(int64(len(files))))
@@ -142,8 +150,22 @@ func DuplicatesReport(o *Out, res *duplicates.Result) {
 	o.Raw("")
 	for i, g := range res.Groups {
 		o.Line("Group #%d  %s each · reclaimable %s", i+1, units.Format(g.Size), units.Format(g.Reclaimable()))
+		dbN := 0
 		for _, f := range g.Files {
-			o.Line("    %s", fsutil.DisplayPath(f.Path))
+			flag := ""
+			switch {
+			case fsutil.IsDatabaseFile(f.Path):
+				flag = "  ⚠ database"
+				dbN++
+			default:
+				if _, err := os.Lstat(f.Path); err != nil {
+					flag = "  · deleted"
+				}
+			}
+			o.Line("    %s%s", fsutil.DisplayPath(f.Path), flag)
+		}
+		if dbN > 0 {
+			o.Line("    ⚠ %d database file(s) — often intentional backups; verify before removing", dbN)
 		}
 		o.Raw("")
 	}
@@ -268,4 +290,11 @@ func LoadCache(key string) *CacheMeta {
 		return nil
 	}
 	return &meta
+}
+
+// InvalidateCache drops all cached scan results. Called after anything is
+// trashed or cleaned, so a rerun never resurrects deleted paths from a
+// cached file list.
+func InvalidateCache() {
+	_ = os.RemoveAll(filepath.Join(fsutil.Home(), ".cache", "macclean"))
 }

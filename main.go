@@ -677,10 +677,13 @@ func cmdDeps(args []string) {
 			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "  failed: %v\n", err)
-			} else if hard {
-				fmt.Println("  deleted")
 			} else {
-				fmt.Println("  moved to Trash")
+				report.InvalidateCache()
+				if hard {
+					fmt.Println("  deleted")
+				} else {
+					fmt.Println("  moved to Trash")
+				}
 			}
 		}
 		return
@@ -880,6 +883,7 @@ func cmdCleanup(args []string) {
 			if err := devcache.Clean(r.ctx, cache, true); err != nil {
 				fmt.Fprintf(os.Stderr, "  failed: %v\n", err)
 			} else {
+				report.InvalidateCache()
 				fmt.Println("  done")
 			}
 		case devcache.TrashOnly:
@@ -890,6 +894,7 @@ func cmdCleanup(args []string) {
 			if err := devcache.Clean(r.ctx, cache, true); err != nil {
 				fmt.Fprintf(os.Stderr, "  failed: %v\n", err)
 			} else {
+				report.InvalidateCache()
 				fmt.Println("  moved to Trash")
 			}
 		default:
@@ -900,6 +905,7 @@ func cmdCleanup(args []string) {
 			if err := devcache.Clean(r.ctx, cache, false); err != nil {
 				fmt.Fprintf(os.Stderr, "  failed: %v\n", err)
 			} else {
+				report.InvalidateCache()
 				fmt.Println("  done")
 			}
 		}
@@ -979,6 +985,7 @@ func cmdMacos(args []string) {
 		if err := macos.Clean(r.ctx, it, force); err != nil {
 			fmt.Fprintf(os.Stderr, "  failed: %v\n", err)
 		} else {
+			report.InvalidateCache()
 			fmt.Println("  done")
 		}
 	}
@@ -996,6 +1003,7 @@ func cmdTrash(args []string) {
 		}
 		fmt.Printf("%s → Trash\n", p)
 	}
+	report.InvalidateCache()
 }
 
 func mustSize(s string) int64 {

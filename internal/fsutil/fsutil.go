@@ -152,6 +152,32 @@ func TrashPath(path string) string {
 	return filepath.Join(Home(), ".Trash", filepath.Base(ExpandPath(path)))
 }
 
+// dbExtensions are database-related file suffixes. "Duplicates" of these
+// are frequently intentional backups, and live database files must never
+// be touched lightly — cleanups flag them for extra attention instead of
+// treating them like ordinary files.
+var dbExtensions = map[string]bool{
+	".sql": true, ".dump": true,
+	".db": true, ".sqlite": true, ".sqlite3": true, ".db3": true,
+	".sqlite-wal": true, ".sqlite-shm": true,
+	".mdb": true, ".accdb": true, // MS Access
+	".ibd": true, ".frm": true, ".myd": true, ".myi": true, // MySQL
+	".trg": true, ".trn": true, // MySQL triggers
+	".bson": true,              // MongoDB
+	".rdb": true, ".aof": true, // Redis
+}
+
+// IsDatabaseFile reports whether a path looks like a database file.
+func IsDatabaseFile(path string) bool {
+	name := strings.ToLower(filepath.Base(path))
+	for ext := range dbExtensions {
+		if strings.HasSuffix(name, ext) {
+			return true
+		}
+	}
+	return false
+}
+
 // RevealInFinder opens a Finder window with the path selected.
 func RevealInFinder(path string) error {
 	return exec.Command("open", "-R", ExpandPath(path)).Run()

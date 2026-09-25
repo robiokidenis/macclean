@@ -214,6 +214,13 @@ After overlap                   228.3 GB
 - No "clean everything" button. No automatic deletion. Ever.
 - Every deletion path re-checks protected locations (`/System`, `/usr`,
   `/var`, …) before acting.
+- **Database files are flagged, everywhere.** `.sql`, `.sqlite*`, MySQL
+  `.ibd/.frm/.myd/.myi`, `.bson`, `.rdb/.aof`, Access files carry a `⚠db`
+  badge in every list, and trash confirmations warn again — their
+  "duplicates" are often intentional backups or live data.
+- **Already-deleted entries are struck through** (`· deleted`) instead of
+  silently reappearing from cached results, and every successful
+  trash/clean invalidates the scan cache.
 - Old files use **modification time** — access time is unreliable on
   modern macOS.
 

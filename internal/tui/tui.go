@@ -20,6 +20,7 @@ import (
 	"macclean/internal/duplicates"
 	"macclean/internal/fsutil"
 	"macclean/internal/macos"
+	"macclean/internal/report"
 	"macclean/internal/scanner"
 	"macclean/internal/settings"
 	"macclean/internal/units"
@@ -209,6 +210,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStatus("clean failed: " + msg.err)
 		} else {
 			m.setStatus("cleaned " + msg.name)
+			report.InvalidateCache()
 		}
 		m.dropCleanedCache(msg.name)
 		return m, nil
@@ -814,6 +816,9 @@ func (m *model) handleTrashDone(msg trashDoneMsg) (tea.Model, tea.Cmd) {
 	}
 	if msg.ok > 0 {
 		m.setStatus(fmt.Sprintf("moved %d item(s) to Trash", msg.ok))
+		// Cached scan results still list the trashed paths; drop them so a
+		// rerun never shows deleted files as if they existed.
+		report.InvalidateCache()
 	} else {
 		m.setStatus("trash failed: " + msg.err)
 		return m, nil
@@ -1125,14 +1130,22 @@ func (m *model) keyFileList(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			var total int64
 			var paths []string
+			dbN := 0
 			for _, t := range targets {
 				total += t.Size
 				paths = append(paths, t.Path)
+				if fsutil.IsDatabaseFile(t.Path) {
+					dbN++
+				}
 			}
-			m.openConfirm("Move to Trash",
-				[]string{fmt.Sprintf("%d file(s), %s total", len(targets), units.Format(total)),
-					"Recoverable from the Trash afterwards.", ""},
-				func(m *model) { m.trashPaths(paths) })
+			lines := []string{
+				fmt.Sprintf("%d file(s), %s total", len(targets), units.Format(total)),
+				"Recoverable from the Trash afterwards.", "",
+			}
+			if dbN > 0 {
+				lines = append(lines, warnStyle.Render(fmt.Sprintf("⚠ %d database file(s) — often intentional backups or live data; verify before removing.", dbN)), "")
+			}
+			m.openConfirm("Move to Trash", lines, func(m *model) { m.trashPaths(paths) })
 		}
 	}
 	return m, nil
@@ -1282,11 +1295,15 @@ func (m *model) keyDuplicates(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "d", "t", "D", "T":
 			var paths []string
 			var total int64
+			dbN := 0
 			for _, g := range m.dup.Groups {
 				for _, f := range g.Files {
 					if m.dupChecked[f.Path] {
 						paths = append(paths, f.Path)
 						total += f.Size
+						if fsutil.IsDatabaseFile(f.Path) {
+							dbN++
+						}
 					}
 				}
 			}
@@ -1294,9 +1311,14 @@ func (m *model) keyDuplicates(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.setStatus("nothing selected — space to mark copies, or s to suggest")
 				return m, nil
 			}
-			m.openConfirm("Move duplicate copies to Trash",
-				[]string{fmt.Sprintf("%d file(s), %s reclaimable", len(paths), units.Format(total)),
-					"Each group keeps its unmarked copies.", ""},
+			lines := []string{
+				fmt.Sprintf("%d file(s), %s reclaimable", len(paths), units.Format(total)),
+				"Each group keeps its unmarked copies.", "",
+			}
+			if dbN > 0 {
+				lines = append(lines, warnStyle.Render(fmt.Sprintf("⚠ %d database file(s) — often intentional backups or live data; verify before removing.", dbN)), "")
+			}
+			m.openConfirm("Move duplicate copies to Trash", lines,
 				func(m *model) { m.trashPaths(paths) })
 		}
 	}
