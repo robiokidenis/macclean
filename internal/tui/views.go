@@ -202,16 +202,15 @@ func (m *model) viewRoots() string {
 func (m *model) viewScan() string {
 	p := m.progress
 	bar := progressBar(p.frac, minInt(60, m.width-8))
+	// The header title already shows the phase label; the body is just the
+	// bar and detail, so the label never renders twice.
 	lines := []string{
-		"",
-		accentStyle.Render(p.label),
 		"",
 		bar,
 		"",
 		dimStyle.Render(p.detail),
 		"",
 	}
-	// The footer already shows the key hints (esc cancel); no duplicate here.
 	return strings.Join(lines, "\n") + "\n"
 }
 
