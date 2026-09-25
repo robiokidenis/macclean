@@ -125,6 +125,7 @@ type model struct {
 	// browser
 	pendingRoot   string
 	tree          *scanner.DirNode
+	treeCache     map[string]*scanner.DirNode // session cache: scanned roots by path
 	cur           *scanner.DirNode
 	browserRows   []browserRow
 	browserCursor int
@@ -475,8 +476,7 @@ func (m *model) keyRoots(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.openError(fmt.Errorf("%s is not a readable directory", p))
 					return m, nil
 				}
-				m.pendingRoot = p
-				m.startJob(jobAnalyzeRoot, "Analyzing "+fsutil.DisplayPath(p))
+				m.openAnalyzeRoot(p)
 			}
 		default:
 			m.pathInput.update(k)
@@ -499,10 +499,26 @@ func (m *model) keyRoots(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pathInput = newLineInput("path:")
 			return m, nil
 		}
-		m.pendingRoot = m.roots[m.rootsCursor]
-		m.startJob(jobAnalyzeRoot, "Analyzing "+fsutil.DisplayPath(m.pendingRoot))
+		m.openAnalyzeRoot(m.roots[m.rootsCursor])
 	}
 	return m, nil
+}
+
+// openAnalyzeRoot shows the session-cached results immediately when the
+// root was scanned before; otherwise it starts a fresh scan.
+func (m *model) openAnalyzeRoot(root string) {
+	if cached := m.treeCache[root]; cached != nil {
+		m.pendingRoot = root
+		m.tree = cached
+		m.cur = cached
+		m.browserCursor = 0
+		m.buildBrowserRows()
+		m.screen = scrBrowser
+		m.setStatus("cached results — press r to re-scan")
+		return
+	}
+	m.pendingRoot = root
+	m.startJob(jobAnalyzeRoot, "Analyzing "+fsutil.DisplayPath(root))
 }
 
 // ---- scan / progress ----
@@ -738,6 +754,10 @@ func (m *model) handleJobDone(msg jobDoneMsg) (tea.Model, tea.Cmd) {
 		m.cur = msg.scan.Root
 		m.browserCursor = 0
 		m.buildBrowserRows()
+		if m.treeCache == nil {
+			m.treeCache = map[string]*scanner.DirNode{}
+		}
+		m.treeCache[m.tree.Path] = m.tree
 		m.screen = scrBrowser
 	case jobDownloads:
 		if msg.scan == nil {
@@ -986,7 +1006,10 @@ func (m *model) keyBrowser(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else if row, ok := m.currentBrowserRow(); ok {
 			m.fileInfoModal(row.file)
 		}
-	case k.Type == tea.KeyBackspace:
+	// esc and backspace both go UP one folder; at the top of the scanned
+	// tree they return to the roots picker. Results stay cached for the
+	// session, so leaving and coming back is instant.
+	case k.Type == tea.KeyBackspace, k.Type == tea.KeyEsc:
 		if m.cur != nil && m.cur.Path != m.tree.Path {
 			parent := parentDir(m.cur.Path)
 			if node := m.tree.Find(parent); node != nil {
@@ -999,10 +1022,15 @@ func (m *model) keyBrowser(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.screen = scrRoots
 		}
-	case k.Type == tea.KeyEsc:
-		m.screen = scrMenu
 	case k.Type == tea.KeyRunes:
 		switch string(k.Runes) {
+		case "r": // re-scan the current root, refreshing cached results
+			if m.tree != nil {
+				root := m.tree.Path
+				delete(m.treeCache, root)
+				m.pendingRoot = root
+				m.startJob(jobAnalyzeRoot, "Re-analyzing "+fsutil.DisplayPath(root))
+			}
 		case "o":
 			if row, ok := m.currentBrowserRow(); ok {
 				path := row.dirPath()

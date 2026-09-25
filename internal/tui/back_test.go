@@ -15,9 +15,10 @@ import (
 	"macclean/internal/sysinfo"
 )
 
-// Esc inside a drilled-down folder must return to the main menu, and
-// Backspace must still climb one level.
-func TestBrowserEscGoesToMenu(t *testing.T) {
+// Esc inside a drilled-down folder goes UP one level (back to the parent
+// results), and only at the top of the tree does it leave to the picker.
+// Results stay cached per session, so re-entering is instant.
+func TestBrowserEscGoesUpThenPicker(t *testing.T) {
 	m := newTestModel()
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
 	root := node("/u/root", node("/u/root/a", node("/u/root/a/b")))
@@ -27,17 +28,54 @@ func TestBrowserEscGoesToMenu(t *testing.T) {
 	m.screen = scrBrowser
 
 	m.Update(escKey())
-	if m.screen != scrMenu {
-		t.Fatalf("esc in folder: screen = %v, want menu", m.screen)
+	if m.cur.Path != "/u/root/a" {
+		t.Fatalf("esc inside a folder must climb one level, got %s", m.cur.Path)
+	}
+	m.Update(escKey())
+	if m.cur.Path != "/u/root" {
+		t.Fatalf("esc again must reach the tree root, got %s", m.cur.Path)
+	}
+	m.Update(escKey())
+	if m.screen != scrRoots {
+		t.Fatalf("esc at the tree top should open the folder list, got screen %v", m.screen)
 	}
 
-	// Backspace climbs: a/b → a → a's parent resets cursor.
+	// Backspace behaves the same way.
 	m.screen = scrBrowser
 	m.cur = root.Children[0].Children[0]
 	m.buildBrowserRows()
 	m.Update(backspaceKey())
 	if m.cur.Path != "/u/root/a" {
 		t.Fatalf("backspace should climb to /u/root/a, got %s", m.cur.Path)
+	}
+}
+
+// A scanned root is cached for the session: re-selecting it skips the
+// scan and shows the results immediately, and r forces a re-scan.
+func TestAnalyzeSessionCache(t *testing.T) {
+	m := newTestModel()
+	m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	root := node("/u/root", node("/u/root/a"))
+	m.treeCache = map[string]*scanner.DirNode{"/u/root": root}
+	m.roots = []string{"/u/root"}
+	m.rootsCursor = 0
+	m.screen = scrRoots
+
+	m.Update(enterKey())
+	if m.screen != scrBrowser {
+		t.Fatalf("cached root should open instantly, screen = %v", m.screen)
+	}
+	if m.cur.Path != "/u/root" {
+		t.Fatalf("expected cached tree, got %s", m.cur.Path)
+	}
+
+	// r drops the cache and starts a fresh scan.
+	m.Update(key("r"))
+	if m.screen != scrScan {
+		t.Fatalf("r should start a re-scan, screen = %v", m.screen)
+	}
+	if _, cached := m.treeCache["/u/root"]; cached {
+		t.Fatal("r must drop the cached tree first")
 	}
 }
 

@@ -126,7 +126,7 @@ func (m *model) keyHints() string {
 	case scrScan:
 		return "esc cancel"
 	case scrBrowser:
-		return "enter drill · backspace up · esc menu · o open · f finder · i info · d trash"
+		return "enter drill · esc/⌫ up (top: folder list) · r re-scan · o open · f finder · i info · d trash"
 	case scrFileList:
 		return "space select · d trash · o open · f finder · i info · esc/⌫ back"
 	case scrDownloads:

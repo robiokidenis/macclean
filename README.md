@@ -85,8 +85,8 @@ first). JSON everywhere with `--json`.
 |-----|--------|
 | `↑↓` / `jk` | move |
 | `enter` | drill down / open |
-| `backspace` | go up one folder (browser) · go back (detail screens) |
-| `esc` | back to the menu from anywhere (cancels a running scan) |
+| `esc` / `⌫` | up one level everywhere; from a top-level screen, back to the menu |
+| `r` | (browser) re-scan the current root |
 | `space` | select (file lists, duplicate copies, dep folders) |
 | `d` / `t` | move selection to Trash (with confirmation) |
 | `o` / `f` | open with default app / reveal in Finder |
