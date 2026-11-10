@@ -61,6 +61,7 @@ Put the binary on your `PATH` and run `macclean` from anywhere.
 
 ```bash
 macclean                    # interactive UI — the best way in
+macclean web                # same tools, in your browser (127.0.0.1 only)
 macclean analyze            # which user folders are largest?
 macclean analyze ~/Projects # drill into one tree
 macclean downloads          # what's rotting in ~/Downloads?
@@ -98,6 +99,20 @@ first). JSON everywhere with `--json`.
 | `q` / `ctrl+c` | quit |
 
 Scans show live progress (files, bytes, bar) and cancel with `esc`.
+
+## Using the web UI
+
+`macclean web` serves the same scans in your browser and opens it
+automatically (`--no-open` to skip, `--port` to choose). It binds
+`127.0.0.1` only and rejects foreign Host headers, so nothing outside
+your machine can reach it.
+
+The web UI keeps the safety model: every screen is read-only until you
+act, and the only actions are **reveal in Finder** and **move to Trash**
+(both reversible). Database-looking files require typing `trash` before
+they can be moved, mirroring the TUI's extra warning. Destructive
+cleanups (emptying the Trash, `--hard` removals) deliberately stay in
+the terminal, where they demand a typed confirmation.
 
 ## CLI reference
 

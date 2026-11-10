@@ -32,6 +32,7 @@ import (
 	"macclean/internal/settings"
 	"macclean/internal/tui"
 	"macclean/internal/units"
+	"macclean/internal/web"
 )
 
 const version = "1.0.0"
@@ -66,6 +67,8 @@ func main() {
 		cmdMacos(rest)
 	case "trash":
 		cmdTrash(rest)
+	case "web":
+		cmdWeb(rest)
 	case "version", "--version", "-v":
 		fmt.Println("macclean " + version)
 	case "help", "--help", "-h":
@@ -86,6 +89,7 @@ func usage() {
 
 Usage:
   macclean                       interactive UI
+  macclean web                   same UI in the browser (local only)
   macclean analyze [paths]       largest folders and files (defaults to common user dirs)
   macclean large [paths]         files above a size threshold
   macclean downloads             ~/Downloads categorized for cleanup
@@ -1018,6 +1022,24 @@ func runTUI() {
 	defer cancel()
 	if err := tui.Run(ctx, version); err != nil {
 		fmt.Fprintf(os.Stderr, "ui error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// cmdWeb serves the browser UI on 127.0.0.1. Same scanners and safety
+// model as the TUI; the only mutations are reveal and move-to-Trash.
+func cmdWeb(args []string) {
+	var port int
+	var noOpen bool
+	fs := flag.NewFlagSet("web", flag.ExitOnError)
+	fs.Usage = func() {}
+	fs.IntVar(&port, "port", 0, "port to listen on (default: pick a free one)")
+	fs.BoolVar(&noOpen, "no-open", false, "print the URL instead of opening the browser")
+	_ = fs.Parse(args)
+	ctx, cancel := contextCancelOnSignal()
+	defer cancel()
+	if err := web.Run(ctx, version, settings.Load(), web.Options{Port: port, Open: !noOpen}); err != nil {
+		fmt.Fprintf(os.Stderr, "web ui error: %v\n", err)
 		os.Exit(1)
 	}
 }

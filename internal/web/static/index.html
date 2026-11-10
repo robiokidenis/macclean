@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>macclean</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%A7%B9%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div id="topbar">
+  <div id="brand">
+    <span class="name"><span class="broom">🧹</span> macclean</span>
+    <span class="ver" id="ver">web</span>
+  </div>
+  <div id="diskline"></div>
+</div>
+<div id="shell">
+  <nav id="nav">
+    <a href="#/overview" data-route="overview">Overview</a>
+    <a href="#/folders" data-route="folders">Folders</a>
+    <a href="#/duplicates" data-route="duplicates">Duplicates</a>
+    <a href="#/deps" data-route="deps">Stale deps</a>
+    <a href="#/downloads" data-route="downloads">Downloads</a>
+    <div class="sep">About</div>
+    <a href="https://github.com/robiokidenis/macclean" target="_blank">GitHub ↗</a>
+  </nav>
+  <main id="main"></main>
+</div>
+<div id="overlay"><div id="modal"></div></div>
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
